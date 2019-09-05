@@ -48,7 +48,11 @@ public class MainActivity extends AppCompatActivity {
         Log.i("java:", ""+anotherGetIntegerObject(12));
         Log.i("java:", ""+getIntegerObject2(3));
         Log.i("java:", ""+anotherGetIntegerObject(13));
+        dynamicMethod();
+
     }
+
+    private native void dynamicMethod();
 
     // 返回给定int值的java.lang.Integer的本地方法。
     private native Integer getIntegerObject2(int number);

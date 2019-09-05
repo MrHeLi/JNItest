@@ -2,8 +2,33 @@
 #include <iostream>
 #include <string>
 #include <android/log.h>
+
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "In C/C++", __VA_ARGS__);
 using namespace std;
+
+
+/*************  动态注册本地JNI函数 Start *************/
+void nativeDynamicMethod() {
+    LOGI("nativeDynamicMethod called");
+}
+
+JNINativeMethod nativeMethod[] = {{"dynamicMethod", "()V", (void *) nativeDynamicMethod}};
+
+// 在Java层调用System.loadLibrary()时触发此函数，该函数可用于一些初始化操作，如动态绑定。Android系统源码JNI函数基本都是动态绑定的。
+// 该函数时其中一个动态绑定的示例。
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
+    // 以下是Java层native函数和JNI函数的绑定过程。
+    LOGI("JNI_OnLoad called");
+    JNIEnv *jniEnv;
+    if (jvm->GetEnv((void **) &jniEnv, JNI_VERSION_1_4) != JNI_OK) {
+        return -1;
+    }
+    jclass jclazz = jniEnv->FindClass("com/dali/jnitest/MainActivity");
+    JNINativeMethod jniMethod[]{};
+    jniEnv->RegisterNatives(jclazz, nativeMethod, sizeof(nativeMethod) / sizeof(nativeMethod[0]));
+    return JNI_VERSION_1_4;
+}
+/*************  动态注册本地JNI函数 End *************/
 
 extern "C"
 JNIEXPORT jstring JNICALL
@@ -42,7 +67,7 @@ Java_com_dali_jnitest_MainActivity_testString(JNIEnv *env, jobject instance, jst
 extern "C"
 JNIEXPORT jdoubleArray JNICALL
 Java_com_dali_jnitest_MainActivity_sumAndAverage(JNIEnv *env, jobject instance,
-                                                               jintArray arr_) {
+                                                 jintArray arr_) {
     //从JNI参数接收数组数据，转换为C代码的本地数据（例如，jint[]）。
     jint *arr = env->GetIntArrayElements(arr_, NULL);
     if (NULL == arr) return NULL;
@@ -53,14 +78,14 @@ Java_com_dali_jnitest_MainActivity_sumAndAverage(JNIEnv *env, jobject instance,
     for (i = 0; i < length; i++) {
         sum += arr[i];
     }
-    jdouble average = (jdouble)sum / length;
+    jdouble average = (jdouble) sum / length;
     env->ReleaseIntArrayElements(arr_, arr, 0); // release resources
 
-    jdouble outCArray[] = {(jdouble)sum, average};
+    jdouble outCArray[] = {(jdouble) sum, average};
     // 将本地C代码的数据（例如，jdouble[]）转换为JNI数组（例如，jdoubleArray）,并且返回JNI数据。
     jdoubleArray outJNIArray = env->NewDoubleArray(2);  // allocate
     if (NULL == outJNIArray) return NULL;
-    env->SetDoubleArrayRegion(outJNIArray, 0 , 2, outCArray);  // copy
+    env->SetDoubleArrayRegion(outJNIArray, 0, 2, outCArray);  // copy
     return outJNIArray;
 }
 extern "C"
@@ -177,7 +202,7 @@ Java_com_dali_jnitest_MainActivity_getIntegerObject(JNIEnv *env, jobject instanc
 }
 extern "C"
 JNIEXPORT jobjectArray JNICALL
-Java_com_dali_jnitest_MainActivity_sumAndAverage2(JNIEnv *env,jobject instance,jobjectArray numbers) {
+Java_com_dali_jnitest_MainActivity_sumAndAverage2(JNIEnv *env, jobject instance, jobjectArray numbers) {
     // 获取java.lang.Integer类的引用
     jclass classInteger = env->FindClass("java/lang/Integer");
     // 使用Integer.intValue() 函数
@@ -194,7 +219,7 @@ Java_com_dali_jnitest_MainActivity_sumAndAverage2(JNIEnv *env,jobject instance,j
         jint value = env->CallIntMethod(objInteger, midIntValue);
         sum += value;
     }
-    double average = (double)sum / length;
+    double average = (double) sum / length;
     LOGI("In C, the sum is %d\n", sum);
     LOGI("In C, the average is %f\n", average);
 
@@ -207,7 +232,7 @@ Java_com_dali_jnitest_MainActivity_sumAndAverage2(JNIEnv *env,jobject instance,j
     // 通过构造函数构造两个Double类型对象
     jmethodID midDoubleInit = env->GetMethodID(classDouble, "<init>", "(D)V");
     if (NULL == midDoubleInit) return NULL;
-    jobject objSum = env->NewObject(classDouble, midDoubleInit, (double)sum);
+    jobject objSum = env->NewObject(classDouble, midDoubleInit, (double) sum);
     jobject objAve = env->NewObject(classDouble, midDoubleInit, average);
     // 初始化jobjectArray
     env->SetObjectArrayElement(outJNIArray, 0, objSum);
@@ -253,6 +278,6 @@ Java_com_dali_jnitest_MainActivity_getIntegerObject2(JNIEnv *env, jobject instan
 }
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_com_dali_jnitest_MainActivity_anotherGetIntegerObject(JNIEnv *env, jobject instance,jint number) {
+Java_com_dali_jnitest_MainActivity_anotherGetIntegerObject(JNIEnv *env, jobject instance, jint number) {
     return getInteger(env, instance, number);
 }
